@@ -1610,8 +1610,14 @@ def main():
     parser.add_argument(
         '--year', '-y',
         type=int,
-        default=2025,
-        help='Year to calculate for (default: 2025)'
+        default=datetime.now().year,
+        help=f'Year to calculate for (default: current year)'
+    )
+    parser.add_argument(
+        '--month', '-m',
+        type=int,
+        default=datetime.now().month,
+        help=f'Month to calculate for (default: current month, 1-12)'
     )
     
     args = parser.parse_args()
@@ -1637,9 +1643,8 @@ def main():
         percentage = (count / summary['total_days']) * 100
         print(f"  {level.replace('_', ' ').title()}: {count} days ({percentage:.1f}%)")
     
-    # Print calendar for current month
-    current_month = 10 #datetime.now().month
-    # print(current_month)
+    # Print calendar for specified month
+    current_month = args.month
     calculator.print_month_calendar(current_month)
     
     # Find auspicious days in current month
