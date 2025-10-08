@@ -1,0 +1,33 @@
+# Development files
+src/
+tests/
+examples/
+scripts/
+
+# Config files
+.eslintrc.cjs
+.prettierrc.json
+tsconfig.json
+rollup.config.mjs
+
+# Version control
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Build artifacts (keep only dist/)
+*.log
+*.tgz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

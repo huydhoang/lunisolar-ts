@@ -2,23 +2,46 @@
   "name": "lunisolar-ts",
   "version": "0.1.0",
   "description": "TypeScript library for the Chinese lunisolar calendar with precomputed astronomical data.",
-  "private": true,
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "rollup -c",
     "postbuild": "node scripts/copy-data.mjs",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"{src,tests}/**/*.{ts,tsx,js,json,md}\"",
     "test": "npm run build && vitest run",
     "examples": "npm run build && node ./examples/run.mjs"
   },
+  "keywords": [
+    "lunisolar",
+    "chinese-calendar",
+    "lunar-calendar",
+    "solar-terms",
+    "astronomy",
+    "huangdao",
+    "construction-stars",
+    "auspicious-days",
+    "typescript"
+  ],
+  "author": "Huy D. Hoang",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huydhoang/lunisolar-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/huydhoang/lunisolar-ts/issues"
+  },
+  "homepage": "https://github.com/huydhoang/lunisolar-ts#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-json": "^6.1.0",
