@@ -40,16 +40,11 @@ export class DataLoader {
   }
 
   private async _loadJson<T>(urlOrPath: string): Promise<T> {
-    // Prefer fetch when available (browser / Node >= 18)
-    if (typeof fetch === 'function') {
-      const res = await fetch(urlOrPath);
-      if (!res.ok) throw new Error(`Failed to load ${urlOrPath}: ${res.status} ${res.statusText}`);
-      return (await res.json()) as T;
-    }
+    const looksLikeHttp = /^(https?:)?\/\//i.test(urlOrPath);
+    const looksRelative = urlOrPath.startsWith('./') || urlOrPath.startsWith('../') || urlOrPath.startsWith('data/');
 
-    // Node fallback: attempt to read from filesystem relative to current module
-    // Note: This branch is primarily for local/dev usage where data is on disk.
-    if (typeof process !== 'undefined' && process.versions?.node) {
+    // Prefer filesystem for relative paths in Node/test environments
+    if ((looksRelative || !looksLikeHttp) && typeof process !== 'undefined' && process.versions?.node) {
       const [{ readFile }, { fileURLToPath }, { resolve, dirname }] = await Promise.all([
         import('node:fs/promises'),
         import('node:url'),
@@ -59,6 +54,13 @@ export class DataLoader {
       const filePath = resolve(base, urlOrPath);
       const txt = await readFile(filePath, 'utf-8');
       return JSON.parse(txt) as T;
+    }
+
+    // Otherwise attempt fetch (browser or fully-qualified URLs)
+    if (typeof fetch === 'function') {
+      const res = await fetch(urlOrPath);
+      if (!res.ok) throw new Error(`Failed to load ${urlOrPath}: ${res.status} ${res.statusText}`);
+      return (await res.json()) as T;
     }
 
     throw new Error('No supported method to load data in this environment.');

@@ -89,8 +89,8 @@ The project has two main entry points:
 ## Key Files
 
 - `data/main.py`: The main entry point for generating bulk astronomical data.
-- `data/calculate_auspicious_days.py`: A comprehensive, standalone tool for calculating and displaying auspicious days based on traditional Chinese systems.
-- `data/lunisolar_v2.py`: A clean, modular, and rule-compliant engine for converting solar dates to the full lunisolar representation, including the sexagenary cycles (Gan-Zhi).
+- `data/huangdao_systems.py`: A comprehensive, standalone tool for calculating and displaying auspicious days based on the two traditional Chinese systems: Great Yellow Path (also referred to as the 12 Spirits) and the 12 Construction Stars (also referred to as the Lesser or Small Yellow Path).
+- `data/lunisolar_v2.py`: A clean, modular, and rule-compliant engine for converting solar dates to the full lunisolar representation, including the sexagenary cycles (Gan-Zhi). It depends on `data/timezone_handler.py` for timezone handling.
 - `data/config.py`: Contains all shared configuration variables and constants.
 - `data/*.py`: Other files in this directory (`celestial_events.py`, `moon_phases.py`, `solar_terms.py`, etc.) are specialized modules for specific calculations.
 - `docs/`: Contains essential documentation explaining the lunisolar calendar rules, including the two main Huangdao (Yellow Path) systems: the Great Yellow Path and the 12 Construction Stars.
