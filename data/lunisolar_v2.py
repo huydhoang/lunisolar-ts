@@ -20,7 +20,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 import logging
@@ -454,43 +454,36 @@ class SexagenaryEngine:
     def ganzhi_day(self, target_local: datetime) -> Tuple[str, str, int]:
         """Day cycle using continuous count and documented historical anchors.
         Note: Keep canonical anchor date per rules doc."""
-        # Reference: January 31, 4 AD (Jiazi day)
-        reference_date = datetime(4, 1, 31)
+        # Anchor: January 31, 4 AD (Jiazi day), defined in UTC for consistency.
+        reference_date_utc = datetime(4, 1, 31, tzinfo=timezone.utc)
         
-        # Ensure both datetimes are timezone-naive for comparison
-        if target_local.tzinfo is not None:
-            target_date = target_local.replace(tzinfo=None)
-        else:
-            target_date = target_local
+        # Convert the local target datetime to UTC to ensure correct day counting.
+        target_utc = self.tz_service.local_to_utc(target_local)
         
-        target_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Calculate the difference in days at the UTC level.
+        days_diff = (target_utc.date() - reference_date_utc.date()).days
         
-        days_diff = (target_date - reference_date).days
-        day_cycle = (days_diff + 1) % 60 + 1
+        # The cycle calculation remains the same.
+        day_cycle = (days_diff % 60) + 1
         
         stem_char, branch_char, _, _ = self._get_stem_branch(day_cycle)
         return stem_char, branch_char, day_cycle
     
-    def ganzhi_hour(self, target_local_solar_time: datetime, base_day_stem: str) -> Tuple[str, str, int]:
+    def ganzhi_hour(self, target_local: datetime, base_day_stem: str) -> Tuple[str, str, int]:
         """Apply Wu Shu Dun; for 23:00–23:59, advance day before computing hour stem/branch.
         Use local solar time per rules."""
-        # Ensure timezone-naive datetime for calculations
-        if target_local_solar_time.tzinfo is not None:
-            local_time = target_local_solar_time.replace(tzinfo=None)
-        else:
-            local_time = target_local_solar_time
-            
-        hour = local_time.hour
-        minute = local_time.minute
+        # The input is already a timezone-aware local datetime.
+        hour = target_local.hour
+        minute = target_local.minute
         
         # Get hour branch
         hour_branch_char, hour_branch_name, hour_branch_index = self._get_hour_branch(hour, minute)
         
         # Handle 23:00-23:59 boundary (belongs to next day's Zi hour)
         if hour >= 23:
-            # Advance to next day for stem calculation
-            next_day = local_time + timedelta(days=1)
-            next_day_stem, _, next_day_cycle = self.ganzhi_day(next_day)
+            # Advance to the next day in the same timezone to get the correct stem.
+            next_day_local = target_local + timedelta(days=1)
+            next_day_stem, _, _ = self.ganzhi_day(next_day_local)
             base_day_stem = next_day_stem
         
         # Calculate hour stem using Wu Shu Dun rule
@@ -498,7 +491,7 @@ class SexagenaryEngine:
         
         # Calculate hour cycle
         stem_index = next((i for i, (char, _, _, _) in enumerate(HEAVENLY_STEMS) if char == hour_stem_char), 0)
-        hour_cycle = (stem_index * 12 + hour_branch_index - 1) % 60 + 1
+        hour_cycle = self._calculate_cycle_from_stem_branch(stem_index + 1, hour_branch_index)
         
         return hour_stem_char, hour_branch_char, hour_cycle
     
@@ -671,7 +664,7 @@ class ResultAssembler:
 def solar_to_lunisolar(
     solar_date: str,
     solar_time: str = "12:00",
-    timezone_handler: Optional[TimezoneHandler] = None
+    timezone_name: str = 'Asia/Shanghai'
 ) -> LunisolarDateDTO:
     """
     Convert solar date and time to lunisolar date with stems and branches.
@@ -682,7 +675,7 @@ def solar_to_lunisolar(
     Args:
         solar_date: Solar date in YYYY-MM-DD format
         solar_time: Solar time in HH:MM format (default: 12:00)
-        timezone_handler: TimezoneHandler for timezone conversions (default: CST)
+        timezone_name: IANA timezone name (default: 'Asia/Shanghai' for CST)
         
     Returns:
         LunisolarDateDTO object with complete lunisolar information
@@ -690,8 +683,9 @@ def solar_to_lunisolar(
     logger = setup_logging()
     
     try:
-        # Initialize services
-        tz_service = TimezoneService(timezone_handler)
+        # Initialize services with the specified timezone name
+        tz_handler = TimezoneHandler(timezone_name)
+        tz_service = TimezoneService(tz_handler)
         window_planner = WindowPlanner()
         ephemeris_service = EphemerisService()
         month_builder = MonthBuilder(tz_service)
@@ -792,11 +786,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Lunisolar Calendar Conversion v2')
     parser.add_argument('--date', type=str, required=True, help='Solar date in YYYY-MM-DD format')
     parser.add_argument('--time', type=str, default='12:00', help='Solar time in HH:MM format')
+    parser.add_argument('--tz', type=str, default='Asia/Ho_Chi_Minh', help='IANA timezone name (e.g., Asia/Ho_Chi_Minh)')
     
     args = parser.parse_args()
     
     try:
-        result = solar_to_lunisolar(args.date, args.time)
+        # Pass the timezone to the main function
+        result = solar_to_lunisolar(args.date, args.time, args.tz)
         
         # Get pinyin for each component
         year_stem_pinyin = get_stem_pinyin(result.year_stem)

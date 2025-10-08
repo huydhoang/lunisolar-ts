@@ -1638,7 +1638,7 @@ def main():
         print(f"  {level.replace('_', ' ').title()}: {count} days ({percentage:.1f}%)")
     
     # Print calendar for current month
-    current_month = 12 #datetime.now().month
+    current_month = 10 #datetime.now().month
     # print(current_month)
     calculator.print_month_calendar(current_month)
     
