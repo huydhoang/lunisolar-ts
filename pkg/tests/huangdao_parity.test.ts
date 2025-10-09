@@ -63,8 +63,9 @@ const cs = new ConstructionStars(cal).getStar();
 
 describe('Huangdao edge cases and multi-timezone parity', () => {
   it('principal solar term day repetition in Asia/Ho_Chi_Minh', async () => {
-    const { DataLoader } = await import(resolve(__dirname, '..', 'dist', 'index.mjs')) as any;
-    const loader = new (DataLoader as any)({ baseUrl: './data' });
+    const { configure, getDataLoader } = await import(resolve(__dirname, '..', 'dist', 'index.mjs')) as any;
+    configure({ strategy: 'fetch', data: { baseUrl: './data' } });
+    const loader = (getDataLoader as any)();
     const terms: [number, number][] = await loader.getSolarTerms(2025);
     const principal = terms.find((t) => t[1] % 2 === 0);
     if (!principal) return;

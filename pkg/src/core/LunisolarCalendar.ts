@@ -1,5 +1,5 @@
 import type { TLunisolarDate } from '../types';
-import { DataLoader } from '../data/DataLoader';
+import { getDataLoader } from '../data/DataLoader';
 import { TimezoneHandler } from '../timezone/TimezoneHandler';
 
 // Heavenly stems and Earthly branches per rules (chars only for public API)
@@ -152,7 +152,7 @@ export class LunisolarCalendar {
     const localParts = userTz.utcToTimezoneDate(date);
     const cst = new TimezoneHandler('Asia/Shanghai');
 
-    const loader = new DataLoader({ baseUrl: './data' });
+    const loader = getDataLoader();
     const yrs = new Set([localParts.year - 1, localParts.year, localParts.year + 1]);
 
     // Gather new moons and solar terms across surrounding years

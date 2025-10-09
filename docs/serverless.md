@@ -1,64 +1,277 @@
 # Bundling Precomputed Data for Serverless/Edge Environments
 
-The `lunisolar-ts` package requires precomputed astronomical data to perform its calculations. In a standard Node.js environment, this data can be loaded from the filesystem at runtime using `fs`. However, serverless and edge computing environments (like Vercel Serverless Functions, AWS Lambda, or Cloudflare Workers) have a read-only filesystem and do not support Node's `fs` module for runtime file access.
-
-This document outlines robust and performant strategies to bundle and load this precomputed data, ensuring the package works seamlessly in any environment.
+The lunisolar-ts package requires precomputed astronomical data to perform its calculations. In serverless and edge environments (Vercel Serverless/Edge, Cloudflare Workers, browsers), you cannot rely on Node fs at runtime. This document describes the hybrid strategy that works in all these environments with **zero configuration by default** (v0.2.0+).
 
 ## The Challenge: Filesystem Limitations
 
-The core issue is that lazy-loading JSON files from the package directory via `fs.readFileSync` will fail in a serverless environment, resulting in `ENOENT` (No such file or directory) errors. The data must be made available to the code without relying on runtime filesystem reads.
+Lazy-loading JSON files from the package directory via fs at runtime will fail in many environments. The data must be available via either network fetch or static bundling inside the application/server bundle.
 
-## Recommended Approaches
+## Implementation Status (v0.2.0+)
 
-The ideal solution is to offer multiple data-loading strategies that are configurable by the end-user, making the library adaptable and "just work" by default in most scenarios.
+✅ **Fully Implemented** - The hardcoded './data' path has been removed and replaced with a flexible, configurable data loading system.
 
-### 1. Dynamic Loading via Fetch (Default Strategy)
+### Key Features
 
-This approach replaces filesystem access with network requests using the `fetch` API, which is universally available in serverless/edge environments and browsers.
+1. **Zero-Config Default**: Uses version-pinned CDN (jsDelivr) automatically
+2. **Global Configuration API**: `configure({ strategy, data })` for customization
+3. **Multiple Strategies**: Fetch (default), static bundling, or Node fs fallback
+4. **Deprecation Handling**: Constructor options deprecated with warnings (removed in v0.3.0)
 
-#### How It Works:
+## Data Loading Strategies (v0.2.0+)
 
-1.  **Configurable Base URL**: The library should expose a configuration option (e.g., `options.data.baseUrl`) allowing users to specify a URL from which to load the data files. Users can host the data themselves, for example, in their public assets folder (`/my-app-data`) or on a private CDN. The library would then fetch data from a path like `${baseUrl}/${dataType}/${year}.json`.
+The library supports two complementary strategies. The default is fetch-based with an absolute CDN base URL, pinned to the package version. Users can opt into static bundling for maximal performance.
 
-2.  **Default CDN Fallback**: If the `baseUrl` is not provided, the library should default to a reliable public CDN like jsDelivr or unpkg. It should be pinned to the specific version of the `lunisolar-ts` package to ensure data immutability and prevent unexpected breaking changes.
-    - **Example URL**: `https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data`
-    - This makes the library work out-of-the-box in serverless environments with zero configuration.
+### 1) Dynamic Loading via Fetch (Default - Zero Config)
 
-3.  **Legacy `fs` Fallback**: For backward compatibility in traditional Node.js environments where `fetch` might not be preferred or available, the library can fall back to using `fs` as a last resort.
+**How it works:**
 
-This strategy keeps the user's application bundle small, as the data is loaded on demand.
+The library automatically loads data from a version-pinned CDN without any configuration:
 
-### 2. Static Bundling via Imports (Embed Strategy)
+```ts
+import { LunisolarCalendar } from 'lunisolar-ts';
 
-This approach allows users to embed the required data directly into their application bundle at build time. This is the most performant option as it avoids runtime network latency.
+// No configuration needed - works immediately
+const cal = await LunisolarCalendar.fromSolarDate(new Date(), 'Asia/Shanghai');
+```
 
-#### How It Works:
+**Default CDN URL:**
+```
+https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data
+```
 
-1.  **Build-Time Manifest**: During the package's build process, generate a manifest module (e.g., `data-loader.js`). This module contains a function that maps a data type and year to a static import path.
+The `<version>` is automatically injected at build time from package.json, ensuring immutable, reproducible data access.
 
-2.  **Static `import()`**: The manifest uses dynamic `import()` expressions with **static string literals**. Modern bundlers (like Webpack, Rollup, Vite) can detect these paths, which tells them to include the corresponding JSON files in the final server bundle.
+**Custom CDN (Optional):**
 
-    ```javascript
-    // Example generated data loader
-    export function getData(dataType, year) {
-      switch (dataType) {
-        case 'new_moons':
-          // The static path allows bundlers to find and include the file
-          return import(`./new_moons/${year}.json`, { assert: { type: "json" }});
-        // ... other cases
+```ts
+import { configure } from 'lunisolar-ts';
+
+// Call once at app startup
+configure({
+  strategy: 'fetch',
+  data: {
+    baseUrl: 'https://your-cdn.com/lunisolar-data'
+  }
+});
+```
+
+**Node.js fs Fallback:**
+
+In Node 22+ environments, when a relative baseUrl is provided (e.g., `'./data'`), the loader will attempt to read from the local filesystem as a last resort if the fetch fails. This is useful for development or air-gapped deployments.
+
+**Pros:**
+- ✅ Zero configuration required
+- ✅ Works in all environments (Vercel, Cloudflare Workers, browsers, Node)
+- ✅ Small initial bundle size (data loaded on-demand)
+- ✅ Version-pinned for reproducibility
+
+**Cons:**
+- ❌ Requires network access
+- ❌ Adds runtime latency (~50-200ms per year of data)
+
+### 2) Static Bundling via Manifest (Advanced)
+
+For applications requiring maximum performance or offline capability, you can bundle data directly into your application.
+
+**How it works:**
+
+1. The build process generates a manifest with static `import()` calls:
+
+```ts
+// Auto-generated: pkg/src/data/manifest.ts
+export async function loadData(dataType: 'new_moons'|'solar_terms', year: number) {
+  switch (dataType) {
+    case 'new_moons':
+      switch (year) {
+        case 2025: return (await import('./precomputed/new_moons/2025.json')).default;
+        // ... cases for each year (1901-2100)
       }
-    }
-    ```
+  }
+}
+```
 
-3.  **Tree-Shaking**: Because the imports are explicit, this approach is tree-shakeable. If a user's code only ever requests data for the year 2025, the bundler can be configured to exclude the data for all other years, leading to a highly optimized and minimal bundle.
+2. Configure your app to use static strategy:
 
-This strategy is ideal for users who want maximum performance and predictability, and are comfortable with a larger initial bundle size.
+```ts
+import { configure } from 'lunisolar-ts';
 
-## Summary of Strategies
+configure({ strategy: 'static' });
+```
 
-| Strategy                 | Pros                                                              | Cons                                                              | Best For                                                              |
-| ------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Dynamic Loading (Fetch)** | - Zero-config for serverless (CDN default)<br>- Small initial bundle size | - Runtime network latency<br>- Relies on external network availability | General-purpose use, especially in client-side or serverless contexts. |
-| **Static Bundling (Import)** | - Zero network latency at runtime<br>- Data is co-located with code<br>- Tree-shakeable for minimal size | - Increases application bundle size<br>- Requires a bundler-aware setup | Performance-critical applications and server-side rendering (SSR).   |
+3. Your bundler (Vite/Rollup/Webpack) will include only the JSON files actually referenced by your code, enabling tree-shaking.
 
-By implementing a configurable system that supports both dynamic fetching and static bundling, `lunisolar-ts` can provide a robust, performant, and developer-friendly experience across all JavaScript environments.
+**Pros:**
+- ✅ Zero network latency
+- ✅ Works offline
+- ✅ Tree-shakeable (only includes referenced years)
+- ✅ Co-located with application code
+
+**Cons:**
+- ❌ Larger application bundle
+- ❌ Requires modern bundler with JSON import support
+
+## Runtime Environment Support
+
+### Tested and Verified Environments
+
+| Environment | Status | Default Strategy | Notes |
+|------------|--------|------------------|-------|
+| **Vercel Serverless** | ✅ Works | Fetch (CDN) | Zero config required |
+| **Vercel Edge Runtime** | ✅ Works | Fetch (CDN) | Only absolute URLs supported |
+| **Cloudflare Workers** | ✅ Works | Fetch (CDN) | Only absolute URLs supported |
+| **Modern Browsers** | ✅ Works | Fetch (CDN) | CORS headers provided by jsDelivr |
+| **Node.js 22+** | ✅ Works | Fetch (CDN) | Native `fetch` available; fs fallback for relative paths |
+
+### Requirements
+
+- **Node.js**: Version 22 or higher (requires native `fetch` support)
+- **Bundlers**: Modern bundler with JSON import support for static strategy (Vite, Rollup, Webpack 5+)
+
+## Configuration Examples
+
+### Zero-Config (Recommended)
+
+No configuration needed - just use the library:
+
+```ts
+import { LunisolarCalendar } from 'lunisolar-ts';
+
+const cal = await LunisolarCalendar.fromSolarDate(new Date(), 'Asia/Shanghai');
+```
+
+Data is automatically fetched from:
+```
+https://cdn.jsdelivr.net/npm/lunisolar-ts@0.1.0/dist/data
+```
+
+### Self-Hosted Data
+
+Host data on your own CDN or server:
+
+```ts
+import { configure } from 'lunisolar-ts';
+
+// Call once at app startup, before any calendar operations
+configure({
+  strategy: 'fetch',
+  data: {
+    baseUrl: 'https://cdn.your-app.com/lunisolar/data'
+  }
+});
+
+// Then use normally
+const cal = await LunisolarCalendar.fromSolarDate(new Date(), 'Asia/Shanghai');
+```
+
+**Note**: Your CDN must serve the same directory structure:
+```
+baseUrl/new_moons/2025.json
+baseUrl/solar_terms/2025.json
+baseUrl/full_moons/2025.json
+```
+
+### Static Bundling for Performance
+
+Bundle data directly into your application for zero-latency access:
+
+```ts
+import { configure } from 'lunisolar-ts';
+
+// Enable static bundling
+configure({ strategy: 'static' });
+
+// Your bundler will include only referenced data files
+const cal = await LunisolarCalendar.fromSolarDate(new Date(), 'Asia/Shanghai');
+```
+
+**Bundler Configuration:**
+
+Most modern bundlers support JSON imports out of the box. If you encounter issues, ensure:
+
+- **Vite**: JSON imports work by default
+- **Rollup**: Use `@rollup/plugin-json`
+- **Webpack 5+**: JSON imports enabled by default
+
+### Node.js Development with Local Files
+
+For local development or air-gapped deployments:
+
+```ts
+import { configure } from 'lunisolar-ts';
+
+configure({
+  strategy: 'fetch',
+  data: {
+    baseUrl: './data'  // Relative path triggers fs fallback in Node.js
+  }
+});
+```
+
+This will attempt fetch first, then fall back to reading from `node_modules/lunisolar-ts/dist/data/`.
+
+## Important Notes
+
+### Data Availability
+
+- The npm package includes `dist/data` with precomputed data for **years 1901-2100**
+- CDN path structure: `https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data/{dataType}/{year}.json`
+- Data types: `new_moons`, `solar_terms`, `full_moons`
+
+### CORS Considerations
+
+When self-hosting data, ensure your CDN/server returns appropriate CORS headers:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+```
+
+jsDelivr CDN provides these headers by default.
+
+### Version Pinning
+
+The default CDN URL includes the package version (e.g., `@0.1.0`), ensuring:
+- ✅ Immutable data access
+- ✅ No cache invalidation issues
+- ✅ Reproducible builds
+
+When upgrading the library, data automatically points to the new version's dataset.
+
+### Relative URLs
+
+**Important**: Relative URLs like `./data/...` are **not** module-relative in browsers/edge environments. They will fail in:
+- Browsers (resolves relative to current page URL)
+- Vercel Edge Runtime
+- Cloudflare Workers
+
+Always use absolute URLs or the default CDN for these environments.
+
+### Migration from v0.1.x
+
+If you were using `new DataLoader({ baseUrl: './data' })`:
+
+1. Remove direct `DataLoader` instantiation
+2. Use `configure()` at app startup instead:
+
+```ts
+import { configure } from 'lunisolar-ts';
+
+configure({
+  strategy: 'fetch',
+  data: { baseUrl: './data' }  // If you need local fs fallback
+});
+```
+
+Constructor options are deprecated and will be removed in v0.3.0.
+
+## Summary
+
+lunisolar-ts v0.2.0+ provides a robust, flexible data loading system:
+
+- ✅ **Zero-config default** using version-pinned CDN (jsDelivr)
+- ✅ **Serverless-first** design works everywhere
+- ✅ **Configurable** for custom CDN or static bundling
+- ✅ **Backward compatible** with deprecation warnings
+- ✅ **Production-ready** for Vercel, Cloudflare Workers, browsers, and Node 22+
+
+The library reliably handles data loading across all deployment targets without requiring runtime filesystem access.

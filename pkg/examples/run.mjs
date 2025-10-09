@@ -7,7 +7,15 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(__dirname, '..', 'dist', 'index.mjs');
 
-const { LunisolarCalendar, ConstructionStars, GreatYellowPath } = await import(pathToFileURL(dist).href);
+const { configure, LunisolarCalendar, ConstructionStars, GreatYellowPath } = await import(pathToFileURL(dist).href);
+
+// Optional: Configure data loading strategy
+// By default, the library uses a version-pinned CDN (zero-config)
+// For local development, we can use the fs fallback:
+configure({
+  strategy: 'fetch',
+  data: { baseUrl: './data' }
+});
 
 async function show(date, timezone) {
   const cal = await LunisolarCalendar.fromSolarDate(date, timezone);

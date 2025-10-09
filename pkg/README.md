@@ -14,6 +14,7 @@ TypeScript library for the Chinese lunisolar calendar with precomputed astronomi
 - 📊 **Precomputed Data**: High-precision astronomical data powered by NASA's JPL DE440 ephemeris
 - 🌍 **Timezone Support**: Accurate calculations for any timezone
 - 📦 **Modern Package**: ESM and CommonJS support with TypeScript declarations
+- ☁️ **Serverless Ready**: Works out-of-the-box in Vercel, Cloudflare Workers, browsers, and Node 22+ with zero configuration
 
 ## Installation
 
@@ -26,7 +27,7 @@ npm install lunisolar-ts
 ```typescript
 import { LunisolarCalendar, ConstructionStars, GreatYellowPath } from 'lunisolar-ts';
 
-// Convert a date to lunisolar calendar
+// Convert a date to lunisolar calendar (zero-config, uses CDN by default)
 const now = new Date();
 const cal = await LunisolarCalendar.fromSolarDate(now, 'Asia/Ho_Chi_Minh');
 
@@ -37,7 +38,7 @@ console.log(`Is Leap Month: ${cal.isLeapMonth}`);
 // Get Construction Star for the day
 const cs = new ConstructionStars(cal);
 const star = cs.getStar();
-console.log(`Construction Star: ${star.name} (${star.auspiciousness})`);
+console.log(`Construction Star: ${star.name} (${star.description})`);
 
 // Get Great Yellow Path spirit
 const gyp = new GreatYellowPath(cal);
@@ -45,9 +46,56 @@ const spirit = gyp.getSpirit();
 console.log(`Spirit: ${spirit.name}`);
 
 // Find auspicious days in a month
-const auspiciousDays = await ConstructionStars.getAuspiciousDays(2025, 1, 80);
+const auspiciousDays = await ConstructionStars.getAuspiciousDays(2025, 1, 3);
 console.log(`Found ${auspiciousDays.length} auspicious days`);
 ```
+
+## Configuration (Optional)
+
+By default, the library loads data from a version-pinned CDN (jsDelivr) with zero configuration required. For advanced use cases, you can customize the data loading strategy:
+
+### Use Default CDN (Recommended)
+
+```typescript
+import { configure } from 'lunisolar-ts';
+
+// Explicit CDN configuration (this is the default, no need to call unless customizing)
+configure({
+  strategy: 'fetch'
+  // Uses: https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data
+});
+```
+
+### Self-Hosted Data
+
+```typescript
+import { configure } from 'lunisolar-ts';
+
+// Point to your own CDN or server
+configure({
+  strategy: 'fetch',
+  data: {
+    baseUrl: 'https://your-cdn.com/lunisolar-data'
+  }
+});
+```
+
+### Static Bundling (Advanced)
+
+For maximum performance, bundle data directly into your application:
+
+```typescript
+import { configure } from 'lunisolar-ts';
+
+// Enable static bundling via manifest
+configure({ strategy: 'static' });
+
+// Bundlers (Vite/Rollup/Webpack) will include only referenced years
+```
+
+**Note**: Call `configure()` once at application startup, before using any calendar functions.
+
+See [`docs/serverless.md`](../docs/serverless.md) for detailed configuration options and deployment scenarios.
 
 ## Development
 

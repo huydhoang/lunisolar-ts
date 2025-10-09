@@ -1,71 +1,190 @@
-# Plan v0.2.0: Serverless Data Loading Implementation (Revised)
+# Plan v0.2.0: Serverless Data Loading Implementation (Revised and Final)
 
-This document outlines the development tasks required to implement the serverless-friendly data loading strategies. This revised plan clarifies the implementation details and adjusts the build process to ensure both dynamic fetching and static bundling are correctly supported.
+This plan implements a robust hybrid data-loading strategy that works out-of-the-box across Vercel Serverless, Vercel Edge, Cloudflare Workers, browsers, and Node 22+. It replaces the hardcoded ./data path currently used at [LunisolarCalendar.fromSolarDate()](pkg/dist/index.mjs:195) where the loader is constructed at [new DataLoader({ baseUrl: './data' })](pkg/dist/index.mjs:200), and delivers:
+- Default fetch strategy with an absolute, version-pinned CDN base URL
+- Optional static bundling via a generated manifest with static import()s
+- Node fs fallback for classic server environments
+- Backwards-compatible deprecation of DataLoader constructor options
 
-## 1. Configuration and Core Module Refactoring
+The package will publish dist/data for years 1900–2100 so the default CDN path always serves immutable data.
 
--   [ ] **Create a Global Configuration Module (`src/config.ts`)**.
-    -   This module will hold the user-defined configuration, such as `{ strategy: 'fetch', baseUrl: '...' }`.
-    -   It will export a getter for the config and a setter function.
+## 1) Configuration and Core Module Refactoring
 
--   [ ] **Implement a Top-Level `configure` Function (`src/index.ts`)**.
-    -   Export a new function `configure(options: LunisolarOptions)` that allows users to set the data loading strategy.
-    -   This function will call the setter in `src/config.ts`.
+- [ ] Create a global configuration module at [src/config.ts](pkg/src/config.ts)
+  - Holds user-defined configuration, e.g.:
+    ```ts
+    export type DataLoaderStrategy = 'fetch' | 'static';
+    export interface LunisolarOptions {
+      strategy?: DataLoaderStrategy; // default 'fetch'
+      data?: { baseUrl?: string };
+    }
+    ```
+  - Exports getConfig() and setConfig(options) functions
 
--   [ ] **Refactor the Existing `DataLoader` (`src/data/DataLoader.ts`)**.
-    -   Remove the constructor options. The `DataLoader` should be a singleton-like class that reads from the global config module (`src/config.ts`).
-    -   Modify the `_loadJson` method to implement the new loading strategies based on the global configuration.
+- [ ] Implement a top-level configure API in [src/index.ts](pkg/src/index.ts)
+  - Export [configure()](pkg/src/index.ts) to set the global options once at app startup
+  - This becomes the primary configuration mechanism for consumers
 
--   [ ] **Update Type Definitions (`src/types.ts`)**.
-    -   Add `LunisolarOptions` and `DataLoaderStrategy` types.
+- [ ] Refactor DataLoader to read from global config in [src/data/DataLoader.ts](pkg/src/data/DataLoader.ts)
+  - Make it singleton-like; remove constructor options
+  - Strategy switching:
+    - strategy === 'static' → use generated manifest loader
+    - strategy === 'fetch' (default) → use fetch with absolute baseUrl, fallback to fs only in Node
+  - Deprecate new DataLoader({...}) with a runtime warning for one minor release
 
-## 2. Build Process for Static Bundling
+- [ ] Update types in [src/types.ts](pkg/src/types.ts)
+  - Add types: LunisolarOptions, DataLoaderStrategy, etc.
 
-The key challenge is making the JSON data available *before* Rollup runs. This requires adjusting the build scripts.
+## 2) Build Process for Static Bundling
 
--   [ ] **Create a `prebuild` script (`scripts/copy-data-to-src.mjs`)**.
-    -   This script will copy the JSON data from the root `output/json` directory to a new `pkg/src/data/precomputed` directory.
-    -   This makes the data available for static `import()` statements.
+Goal: make JSON data available before Rollup runs so bundlers can include exactly what the app needs.
 
--   [ ] **Create the Manifest Generation Script (`scripts/generate-data-manifest.mjs`)**.
-    -   This script will scan `pkg/src/data/precomputed` and generate `pkg/src/data/manifest.ts`.
-    -   The generated manifest will export a `loadData(dataType, year)` function containing `switch` statements that map to dynamic `import('./precomputed/.../{year}.json')` calls.
+- [ ] Create script: [scripts/copy-data-to-src.mjs](pkg/scripts/copy-data-to-src.mjs)
+  - Copies from root [output/json](output/json) to [pkg/src/data/precomputed](pkg/src/data/precomputed)
+  - Directory layout:
+    - precomputed/new_moons/{year}.json
+    - precomputed/solar_terms/{year}.json
+    - precomputed/full_moons/{year}.json (if used)
+  - Note: [pkg/.gitignore](pkg/.gitignore) must ignore src/data/precomputed
 
--   [ ] **Update `package.json` Scripts**.
-    -   Add a new `prebuild` script that runs the two scripts above in order.
-    -   Modify the `build` script to be: `npm run prebuild && rollup -c`.
-    -   The existing `postbuild` script (`scripts/copy-data.mjs`) should remain, as it's needed to place the data in `dist/data` for the CDN/fetch strategy.
+- [ ] Create script: [scripts/generate-data-manifest.mjs](pkg/scripts/generate-data-manifest.mjs)
+  - Scans [pkg/src/data/precomputed](pkg/src/data/precomputed)
+  - Generates [pkg/src/data/manifest.ts](pkg/src/data/manifest.ts) that exports:
+    - [loadData()](pkg/src/data/manifest.ts) with static string-literal import() calls, e.g.:
+      ```ts
+      export async function loadData(
+        dataType: 'new_moons' | 'solar_terms',
+        year: number
+      ): Promise<any> {
+        switch (dataType) {
+          case 'new_moons':
+            switch (year) {
+              case 2025:
+                return (await import('./precomputed/new_moons/2025.json', { assert: { type: 'json' } })).default;
+              // ... more cases
+            }
+            break;
+          // ... other data types
+        }
+        throw new Error(`No static data for ${dataType}/${year}`);
+      }
+      ```
 
--   [ ] **Update `.gitignore`**.
-    -   Add `src/data/precomputed/` to `pkg/.gitignore` to prevent the copied data from being committed to version control.
+- [ ] Ensure postbuild copy for CDN publishing: [scripts/copy-data.mjs](pkg/scripts/copy-data.mjs)
+  - Copies from root [output/json](output/json) to [pkg/dist/data](pkg/dist/data)
+  - This guarantees npm tarball contains dist/data for all supported years (1900–2100)
 
-## 3. Data Loading Strategy Implementation
+- [ ] Update NPM scripts in [package.json](pkg/package.json)
+  - "prebuild": "node scripts/copy-data-to-src.mjs && node scripts/generate-data-manifest.mjs"
+  - "build": "npm run prebuild && rollup -c"
+  - "postbuild": "node scripts/copy-data.mjs" (kept and implemented)
 
--   [ ] **Implement Strategy Switching in `DataLoader`**.
-    -   The main data-fetching method (e.g., `getNewMoons`) will check the global config.
-    -   If `strategy === 'static'`, it will call the function from the generated `src/data/manifest.ts`.
-    -   If `strategy === 'fetch'` (the default), it will proceed with the fetch/fs logic.
+- [ ] Update ignore rules
+  - Add src/data/precomputed/ to [pkg/.gitignore](pkg/.gitignore)
+  - Keep dist/ in package files list per [package.json files](pkg/package.json:9)
 
--   [ ] **Enhance the 'Fetch' Strategy**.
-    -   **Default to CDN**: If `baseUrl` is not provided, default to `https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/data`.
-    -   **Inject Package Version**: Modify the build process (e.g., using `rollup-plugin-replace`) to inject the package version from `package.json` into the code to build the correct CDN URL automatically.
-    -   **Retain `fs` Fallback**: Keep the existing `fs` logic as a final fallback for classic Node.js environments when a relative path is used.
+## 3) Data Loading Strategy Implementation
 
-## 4. Integration and Refactoring
+- [ ] Strategy switching in DataLoader
+  - static → use [loadData()](pkg/src/data/manifest.ts)
+  - fetch (default) → construct URL `${baseUrl}/${dataType}/${year}.json`
 
--   [ ] **Update `LunisolarCalendar.ts`**.
-    -   Remove the direct instantiation: `new DataLoader({ baseUrl: './data' })`.
-    -   Instead, import a single, shared instance of the `DataLoader` and use it.
+- [ ] Default fetch baseUrl
+  - If not provided by user, default to:
+    - https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data
+  - Version is injected at build time from [package.json version](pkg/package.json:3)
 
--   [ ] **Update `ConstructionStars.ts`**.
-    -   The static method `getAuspiciousDays` also instantiates a `DataLoader`. Refactor it to use the shared instance.
+- [ ] Version injection
+  - Add replace to [rollup.config.mjs](pkg/rollup.config.mjs:1) to inject a constant (e.g., __VERSION__)
+    ```ts
+    import replace from '@rollup/plugin-replace';
+    // ...
+    plugins: [
+      // ...
+      replace({
+        preventAssignment: true,
+        __VERSION__: JSON.stringify(process.env.npm_package_version),
+      }),
+      // ...
+    ]
+    ```
+  - DataLoader builds default baseUrl using __VERSION__
 
-## 5. Documentation and Testing
+- [ ] Node fs fallback
+  - Keep as last resort in Node 22+ when baseUrl is relative and files exist locally
+  - In Edge/Workers/Browsers, do not attempt fs
 
--   [ ] **Update `README.md` and `docs/serverless.md`**.
-    -   Document the new `configure()` method and explain the `'fetch'` vs. `'static'` strategies with clear examples for Vercel, browsers, and Node.js.
--   [ ] **Update Unit/Integration Tests**.
-    -   Modify tests in `tests/` to work with the new configuration system.
-    -   Add tests specifically for the static bundling strategy.
-    -   Add tests to verify the CDN fallback URL is constructed correctly.
-    -   Ensure the `fs` fallback continues to work as expected.
+- [ ] Node baseline: 22+
+  - Use global fetch without polyfills
+
+## 4) Integration and Refactoring
+
+- [ ] Update LunisolarCalendar to use shared DataLoader instance
+  - Remove direct instantiation from [LunisolarCalendar.fromSolarDate()](pkg/dist/index.mjs:195)
+  - Import shared loader and read from global config
+
+- [ ] Update ConstructionStars
+  - Ensure no direct instantiation with constructor options; use shared loader
+
+- [ ] Backwards compatibility
+  - new DataLoader({...}) emits a deprecation warning for one minor version
+  - README updated with configure-first approach
+
+## 5) Documentation and Testing
+
+- [ ] Update docs
+  - Expand [docs/serverless.md](docs/serverless.md) with:
+    - Default CDN baseUrl (jsDelivr /dist/data), zero-config examples
+    - Static bundling notes and JSON import assertion guidance
+    - Runtime matrix (Vercel Serverless/Edge, Cloudflare Workers, browsers, Node 22+)
+
+- [ ] Update README
+  - Add configure usage
+  - Mention default zero-config behavior and how to self-host baseUrl
+
+- [ ] Tests
+  - Unit/integration tests for:
+    - fetch default strategy (mock fetch), absolute CDN baseUrl construction
+    - static bundling strategy via manifest (importable in test bundler)
+    - Node fs fallback (only in Node)
+    - removal of './data' hardcode in calendar logic
+
+## 6) Acceptance Criteria and Runtime Matrix
+
+Zero-config targets must work by default without any user configuration:
+
+- [ ] Vercel Serverless Functions
+  - Default fetch + jsDelivr CDN works; no fs usage
+- [ ] Vercel Edge Runtime
+  - Default fetch + CDN works; absolute URLs only
+- [ ] Cloudflare Workers
+  - Default fetch + CDN works; absolute URLs only
+- [ ] Browsers
+  - Default fetch + CDN works; CORS considerations documented
+- [ ] Node 22+
+  - Default fetch + CDN works
+  - fs fallback works when baseUrl is relative and dist/data exists on disk
+
+Static bundling:
+
+- [ ] Bundlers (Vite/Rollup/Webpack) can include only referenced years via [manifest.ts](pkg/src/data/manifest.ts)
+- [ ] Document that JSON import assertions may be required and how to enable them
+
+Data publishing:
+
+- [ ] NPM package includes [dist/data](pkg/dist/data) for years 1900–2100
+- [ ] CDN path https://cdn.jsdelivr.net/npm/lunisolar-ts@<version>/dist/data resolves and serves
+
+## 7) Notes and Risks
+
+- Package size: shipping 1900–2100 under dist/data increases tarball size. Confirm acceptable threshold; if exceeded, consider compression or splitting data in a future minor.
+- Relative fetch baseUrl in edge/browsers is invalid; always use absolute URLs or default CDN.
+- Keep a deprecation window for constructor options; remove in v0.3.0.
+
+## Summary of Key Changes from v0.1.x
+
+- Remove hardcoded './data' loader in calendar
+- Introduce [configure()](pkg/src/index.ts) and global config
+- Default to jsDelivr CDN under /dist/data pinned by version
+- Implement manifest-based static bundling path
+- Ensure NPM publishes dist/data so CDN works out-of-the-box

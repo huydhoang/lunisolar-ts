@@ -12,7 +12,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "prebuild": "node scripts/copy-data-to-src.mjs && node scripts/generate-data-manifest.mjs",
+    "build": "npm run prebuild && rollup -c",
     "postbuild": "node scripts/copy-data.mjs",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-replace": "^5.0.5",
     "@rollup/plugin-node-resolve": "^16.0.2",
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/node": "^24.7.0",

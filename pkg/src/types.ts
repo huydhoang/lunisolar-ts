@@ -3,7 +3,7 @@
  */
 
 /** Unix timestamps in seconds for data arrays (smaller than ms). */
-export type TSolarTerm = number;
+export type TSolarTerm = [number, number]; // [timestampSec, termIndex]
 export type TNewMoon = number;
 
 /** Broken-out date parts in a specific timezone. */

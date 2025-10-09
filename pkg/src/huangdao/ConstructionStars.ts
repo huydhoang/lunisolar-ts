@@ -1,7 +1,5 @@
 import type { TConstructionStar, TDayInfo } from '../types';
 import { LunisolarCalendar } from '../core/LunisolarCalendar';
-import { DataLoader } from '../data/DataLoader';
-import { TimezoneHandler } from '../timezone/TimezoneHandler';
 
 // Twelve Construction Stars in fixed order
 const STAR_SEQUENCE = ['建', '除', '满', '平', '定', '执', '破', '危', '成', '收', '开', '闭'] as const;
