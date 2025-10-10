@@ -7,19 +7,21 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(__dirname, '..', 'dist', 'index.mjs');
 
-const { configure, LunisolarCalendar, ConstructionStars, GreatYellowPath } = await import(pathToFileURL(dist).href);
+const { configure, LunisolarCalendar, ConstructionStars, GreatYellowPath } = await import(
+  pathToFileURL(dist).href
+);
 
 // Optional: Configure data loading strategy
 // By default, the library uses a version-pinned CDN (zero-config)
 // For local development, we can use the fs fallback:
 configure({
   strategy: 'fetch',
-  data: { baseUrl: './data' }
+  data: { baseUrl: './data' },
 });
 
 async function show(date, timezone) {
   const cal = await LunisolarCalendar.fromSolarDate(date, timezone);
-  const cs = new ConstructionStars(cal).getStar();
+  const cs = await new ConstructionStars(cal).getStar();
   const gyp = new GreatYellowPath(cal).getSpirit();
 
   console.log('--- Example ---');
@@ -34,7 +36,7 @@ async function show(date, timezone) {
     dayGanzhi: cal.dayStem + cal.dayBranch,
     hourGanzhi: cal.hourStem + cal.hourBranch,
   });
-  console.log('isPrincipalSolarTermDay:', (cal).isPrincipalSolarTermDay);
+  console.log('isPrincipalSolarTermDay:', cal.isPrincipalSolarTermDay);
   console.log('Construction Star:', cs.name, 'score=', cs.score);
   console.log('Great Yellow Path:', gyp.name, gyp.type);
   console.log();
@@ -48,3 +50,6 @@ await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
 
 // Additional test: Asia/Shanghai example (UTC+8)
 await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Shanghai');
+
+// Additional test: Construction Star sequence bug
+await show(new Date(Date.UTC(2025, 9, 9, 5, 0, 0)), 'Asia/Ho_Chi_Minh');

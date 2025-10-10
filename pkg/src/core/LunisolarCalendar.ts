@@ -188,11 +188,14 @@ export class LunisolarCalendar {
       })
       .sort((a, b) => a.instantUtc.getTime() - b.instantUtc.getTime());
 
-    // Determine principal solar term day in provided timezone (local date equality)
+    // Determine principal solar term day (节气 Jieqi) in provided timezone
+    // Per docs/12_construction_stars.md: 节气 (sectional terms) are at ODD indices
+    // These trigger the Construction Stars repeat rule
     let isPrincipalSolarTermDay = false;
     for (const [y, arr] of stYearMap) {
       for (const [ts, idx] of arr as [number, number][]) {
-        if ((idx % 2) !== 0) continue;
+        // Check ODD indices for sectional terms (节气 Jieqi)
+        if ((idx % 2) === 0) continue;
         const dt = new Date(ts * 1000);
         const lp = userTz.utcToTimezoneDate(dt);
         if (lp.year === localParts.year && lp.month === localParts.month && lp.day === localParts.day) {
