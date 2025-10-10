@@ -26,8 +26,6 @@ Originating from ancient Chinese astronomical traditions, documented in classica
 3. Continue the 12-star cycle sequentially
 4. Each traditional month has its building branch (月建)
 
-### Implementation Status
-✅ **Fully Implemented** in `calculate_twelve_construction_stars.py`
 
 ---
 
@@ -91,8 +89,6 @@ The system uses **lunar months defined by solar terms** rather than calendar mon
 5. **玄武 (Xuanwu)**: 天狱星，君子用之吉，小人用之凶，忌词讼博戏
 6. **勾陈 (Gouchen)**: 地狱星，起造安葬，犯此绝嗣。此时所作一切事，有始无终，先喜后悲，不利攸往
 
-### Implementation Status
-✅ **Fully Implemented** in `calculate_great_yellow_path.py`
 
 ---
 

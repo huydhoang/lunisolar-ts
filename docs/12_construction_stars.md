@@ -4,7 +4,7 @@
 
 The Twelve Construction Stars (十二建星, Shí'èr Jiànxīng) system is a traditional Chinese divination method used to determine auspicious and inauspicious dates for various activities. This ancient system is deeply rooted in Chinese cosmology and has been used for over a millennium to guide important decisions regarding ceremonies, construction, travel, and other significant life events.
 
-## Historical Background and Sources
+## Historical Background and Sources (_Needs Verification_)
 
 - **Historical Origin**: Dates to **Warring States period (战国)**, with bamboo slips from Qin and Chu states documenting early forms.  
 
@@ -59,10 +59,18 @@ The calculation begins with the 24 Solar Terms (二十四节气), particularly:
 ### Step 2: Monthly Building System (月建)
 
 Each traditional month has an associated Earthly Branch (地支):
-- 正月建寅 (1st month builds on Yín 寅)
-- 二月建卯 (2nd month builds on Mǎo 卯)
-- 三月建辰 (3rd month builds on Chén 辰)
-- And so forth through the 12-month cycle
+- 正月建寅 (Lunisolar month 1: 建 Jiàn on Yín 寅 day)
+- 二月建卯 (Lunisolar month 2: 建 Jiàn on Mǎo 卯 day)
+- 三月建辰 (Lunisolar month 3: 建 Jiàn on Chén 辰 day)
+- 四月建巳 (Lunisolar month 4: 建 Jiàn on Sì 巳 day)
+- 五月建午 (Lunisolar month 5: 建 Jiàn on Wǔ 午 day)
+- 六月建未 (Lunisolar month 6: 建 Jiàn on Wèi 未 day)
+- 七月建申 (Lunisolar month 7: 建 Jiàn on Shēn 申 day)
+- 八月建酉 (Lunisolar month 8: 建 Jiàn on Yǒu 酉 day)
+- 九月建戌 (Lunisolar month 9: 建 Jiàn on Xū 戌 day)
+- 十月建亥 (Lunisolar month 10: 建 Jiàn on Hài 亥 day)
+- 十一月建子 (Lunisolar month 11: 建 Jiàn on Zǐ 子 day)
+- 十二月建丑 (Lunisolar month 12: 建 Jiàn on Chǒu 丑 day)
 
 ### Step 3: Earthly Branch Calculation
 
@@ -115,61 +123,6 @@ The implementation includes a numerical scoring system for practical application
 - **Score 1**: Generally unfavorable (建, 满, 平, 收)
 - **Score 0**: Very unfavorable (破, 闭)
 
-## Usage Examples
-
-### Basic Usage
-
-```python
-from datetime import datetime
-from calculate_twelve_construction_stars import TwelveConstructionStars
-
-# Initialize for current year
-calculator = TwelveConstructionStars(2025)
-
-# Get construction star for a specific date
-date = datetime(2025, 7, 1)
-star = calculator.get_construction_star_for_date(date)
-print(f"July 1, 2025: {star}")  # Output: 除
-
-# Get detailed information
-day_info = calculator.calculate_day_info(date)
-print(day_info)
-# Output: {
-#     'date': '2025-07-01',
-#     'star': '除',
-#     'translation': 'Chú (Remove)',
-#     'auspiciousness_level': 'auspicious',
-#     'color_classification': 'yellow',
-#     'score': 4,
-#     'earthly_branch': '寅'
-# }
-```
-
-### Finding Auspicious Days
-
-```python
-# Find highly auspicious days in a month
-auspicious_days = calculator.find_auspicious_days_in_month(7, min_score=4)
-for day in auspicious_days:
-    print(f"{day['date']}: {day['star']} ({day['translation']})")
-```
-
-### Monthly Calendar
-
-```python
-# Generate a complete monthly calendar
-calendar.print_month_calendar(7)  # July 2025
-```
-
-### Year Summary
-
-```python
-# Get statistical summary for the entire year
-summary = calculator.calculate_year_summary()
-print(f"Auspicious days: {summary['auspiciousness_distribution']['auspicious']}")
-print(f"Total days: {summary['total_days']}")
-```
-
 ## Practical Applications
 
 ### Recommended Activities by Star
@@ -194,54 +147,6 @@ print(f"Total days: {summary['total_days']}")
 - **破 (Pò - Break)**: Avoid all important activities
 - **闭 (Bì - Close)**: Avoid openings, starts, or new ventures
 
-## Technical Considerations
-
-### Accuracy and Limitations
-
-1. **Solar Term Handling**: The implementation must correctly handle the critical rule where solar term days repeat the previous day's star value rather than advancing. This applies only to the 12 principal solar terms (节气), not the middle qi (中气), and is essential for maintaining yearly cycle alignment.
-
-2. **Solar Term Approximation**: The current implementation uses simplified solar term calculations. For maximum precision, astronomical calculations should be used.
-
-3. **Regional Variations**: Traditional practices may vary by region. This implementation follows the most common mainland Chinese tradition.
-
-4. **Calendar Systems**: The system bridges solar terms (solar calendar) with traditional lunar months, requiring careful handling of year boundaries.
-
-### Critical Bug: Time-Based Calculation Error
-
-**Issue Identified**: A critical bug was discovered in the `get_construction_star_for_date` method where datetime objects with time components caused incorrect calculation of `days_since_jian`.
-
-**Problem Description**:
-- When calculating `(date - jian_day).days`, if the `jian_day` includes a time component (e.g., from solar term calculations) and the input `date` is at midnight, the timedelta calculation incorrectly returns -1 instead of 0
-- This causes the "Jian" day (which should have star index 0) to be assigned star index 11 ("Bi" - Close), resulting in incorrect auspiciousness classifications
-- Example: July 1st and July 25th, 2025, both "Wei" days in a "Wei" month, were incorrectly assigned "Bi" (Close) instead of the correct "Jian" (Establish)
-
-**Root Cause**:
-```python
-# Problematic calculation
-days_since_jian = (date - jian_day).days
-# When jian_day has time component and date is at midnight,
-# this returns -1 instead of expected 0
-```
-
-**Fix Implementation**:
-```python
-# Normalize both dates to midnight before calculation
-date_normalized = date.replace(hour=0, minute=0, second=0, microsecond=0)
-jian_day_normalized = jian_day.replace(hour=0, minute=0, second=0, microsecond=0)
-days_since_jian = (date_normalized - jian_day_normalized).days
-```
-
-**Impact**:
-- Ensures accurate star assignments for all dates
-- Prevents misclassification of auspicious/inauspicious days
-- Maintains the integrity of the traditional calculation system
-
-**Testing Verification**:
-After applying the fix, July 1st and July 25th, 2025, correctly show:
-- Construction Star: "Jian" (Establish) instead of "Bi" (Close)
-- Auspiciousness Level: Properly classified according to traditional rules
-- Days since Jian day: 0 (correct) instead of -1 (incorrect)
-
 ### Cross-Validation of Solar Term Rule
 
 The rule as stated in **Step 4**—that on the day a solar term (节气) begins you **repeat the previous day’s star** rather than advance to the next one—is indeed the classic method taught in Chinese calendrical texts. In fact:
@@ -256,52 +161,6 @@ The rule as stated in **Step 4**—that on the day a solar term (节气) begins
   > “碰到节气如惊蛰、清明等（不包括中气的雨水、谷雨等），就重复节气前一天的值，一年十二个节气下来正好滞后十二天，于是次年立春后的寅日又是‘建’。” ([cnpack.org][2])
 
 So **yes**, the document’s description of Step 4 is accurate and reflects standard practice: whenever you hit a solar term day in the twenty‑four‑term cycle, you carry over (“freeze”) the prior day’s star rather than moving to the next one.
-
-### Verification Methods
-
-The implementation has been verified against:
-- Traditional Chinese almanacs (通书)
-- Historical records of known auspicious dates
-- Cross-reference with established Gānzhī calculations
-- Modern calendrical libraries and folk almanac guides
-
-## Cultural Context and Modern Usage
-
-### Traditional Significance
-
-The Twelve Construction Stars system reflects fundamental Chinese philosophical concepts:
-- **Cyclical Time**: Time as recurring patterns rather than linear progression
-- **Cosmic Harmony**: Human activities should align with natural cycles
-- **Practical Wisdom**: Ancient observations codified for daily guidance
-
-### Contemporary Applications
-
-1. **Wedding Planning**: Selecting auspicious dates for ceremonies
-2. **Business Decisions**: Timing for openings, contracts, and major announcements
-3. **Construction Projects**: Traditional timing for groundbreaking and completion
-4. **Personal Planning**: Scheduling important personal activities
-
-### Integration with Other Systems
-
-The Construction Stars system often works in conjunction with:
-- **Bāzì (八字)** - Four Pillars of Destiny
-- **Fēngshuǐ (风水)** - Geomantic principles
-- **Yìjīng (易经)** - I Ching divination
-- **Chinese Zodiac** - Annual and daily animal signs
-
-## Conclusion
-
-The Twelve Construction Stars system represents a sophisticated integration of astronomical observation, mathematical calculation, and practical wisdom accumulated over centuries. While rooted in traditional Chinese culture, its systematic approach to timing and decision-making continues to provide value in contemporary applications.
-
-The implementation provided offers both historical accuracy and modern computational efficiency, making this ancient wisdom accessible for contemporary use while maintaining respect for its traditional foundations.
-
-## References and Further Reading
-
-1. **《玉匣记》(Yùxiá Jì)** - Classical source text
-2. **《协纪辨方书》(Xiéjì Biànfāng Shū)** - Qing Dynasty compilation of calendar methods
-3. **《钦定四库全书》(Qīndìng Sìkù Quánshū)** - Imperial encyclopedia containing calendar treatises
-4. Modern Chinese almanacs and traditional calendar publications
-5. Academic studies on Chinese traditional astronomy and calendar systems
 
 ---
 
