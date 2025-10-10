@@ -343,51 +343,101 @@ class LeapMonthAssigner:
         self.logger = setup_logging()
     
     def assign_month_numbers(self, periods: List[MonthPeriod], anchor_solstice_utc: datetime) -> None:
-        """Locate Zi-month (period containing Winter Solstice) and set number=11.
-        Iterate forward:
-        - If hasPrincipalTerm: increment sequence (11->12->1->...)
-        - Else: mark isLeap=True and assign same number as previous regular month
-        Zi-month cannot be leap."""
+        """Assign month numbers starting from Zi month (month 11).
+        
+        Strategy:
+        1. Find the Zi month (contains Winter Solstice) and assign it number 11
+        2. Iterate forward from Zi month through all subsequent periods:
+           - Regular months (with principal term): increment month number (11→12→1→2→...)
+           - Leap months (no principal term): take the preceding month's number
+        
+        This forward-only approach works because the WindowPlanner ensures the Zi month
+        is at or near the start of the period list, making a backward pass unnecessary."""
+        
+        self.logger.info("=" * 80)
+        self.logger.info("MONTH NUMBERING DEBUG - Starting month numbering process")
+        self.logger.info("=" * 80)
         
         # Find Zi month (contains Winter Solstice)
         zi_month_index = self._find_zi_month(periods, anchor_solstice_utc)
         if zi_month_index == -1:
             raise ValueError("Could not find Zi month containing Winter Solstice")
         
+        self.logger.info(f"Winter Solstice (Z11) at: {anchor_solstice_utc}")
+        self.logger.info(f"Zi month (month 11) found at period index: {zi_month_index}")
+        self.logger.info(f"  Period start: {periods[zi_month_index].start_cst_date}")
+        self.logger.info(f"  Period end: {periods[zi_month_index].end_cst_date}")
+        self.logger.info(f"  Has principal term: {periods[zi_month_index].has_principal_term}")
+        
         # Assign Zi month
         periods[zi_month_index].month_number = 11
         periods[zi_month_index].is_leap = False
         
-        # Assign subsequent months
+        # Assign subsequent months (forward pass)
+        self.logger.info("\n" + "-" * 80)
+        self.logger.info("FORWARD PASS - Assigning months after Zi month (11)")
+        self.logger.info("-" * 80)
+        
         current_month_number = 11
         for i in range(zi_month_index + 1, len(periods)):
             period = periods[i]
             
+            self.logger.info(f"\n{'='*60}")
+            self.logger.info(f"FORWARD PASS - Processing period index {i}:")
+            self.logger.info(f"{'='*60}")
+            self.logger.info(f"  Period dates: {period.start_cst_date} to {period.end_cst_date}")
+            self.logger.info(f"  Has principal term: {period.has_principal_term}")
+            self.logger.info(f"  Current tracker (represents previous month number): {current_month_number}")
+            
             if period.has_principal_term:
                 # Regular month - increment number
+                old_value = current_month_number
+                self.logger.info(f"\n  ✓ HAS PRINCIPAL TERM - This is a REGULAR month")
+                self.logger.info(f"  Step 1: Calculate new month number")
+                self.logger.info(f"          Formula: (current_month_number % 12) + 1")
+                self.logger.info(f"          Calculation: ({old_value} % 12) + 1 = {(old_value % 12) + 1}")
                 current_month_number = (current_month_number % 12) + 1
                 period.month_number = current_month_number
                 period.is_leap = False
+                self.logger.info(f"  Step 2: Assign to period")
+                self.logger.info(f"          period.month_number = {current_month_number}")
+                self.logger.info(f"          period.is_leap = False")
+                self.logger.info(f"  Step 3: Update tracker")
+                self.logger.info(f"          current_month_number = {current_month_number} (for next iteration)")
+                self.logger.info(f"\n  → RESULT: Regular month {current_month_number} assigned")
             else:
                 # Leap month - takes previous month number
+                self.logger.info(f"\n  ✗ NO PRINCIPAL TERM - This is a LEAP month")
+                self.logger.info(f"  Step 1: Identify preceding month number")
+                self.logger.info(f"          Preceding month number = {current_month_number}")
+                self.logger.info(f"  Step 2: Assign to period (per rule: leap takes PRECEDING month number)")
                 period.month_number = current_month_number
                 period.is_leap = True
+                self.logger.info(f"          period.month_number = {current_month_number}")
+                self.logger.info(f"          period.is_leap = True")
+                self.logger.info(f"  Step 3: Keep tracker unchanged")
+                self.logger.info(f"          current_month_number = {current_month_number} (unchanged for next)")
+                self.logger.info(f"\n  → RESULT: Leap month {current_month_number} assigned")
         
-        # Assign preceding months (if target is before Zi month)
-        current_month_number = 11
-        for i in range(zi_month_index - 1, -1, -1):
-            period = periods[i]
-            current_month_number = (current_month_number - 1) if current_month_number > 1 else 12
-            
-            if period.has_principal_term:
-                # Regular month
-                period.month_number = current_month_number
-                period.is_leap = False
-            else:
-                # Leap month - takes following month number
-                next_month_number = (current_month_number % 12) + 1
-                period.month_number = next_month_number
-                period.is_leap = True
+        # Note: No backward pass needed - WindowPlanner ensures Zi month is at list start
+        if zi_month_index > 0:
+            self.logger.info("\n" + "-" * 80)
+            self.logger.info(f"NOTE: {zi_month_index} period(s) before Zi month exist in window")
+            self.logger.info("These are outside the calculation scope and remain unnumbered")
+            self.logger.info("-" * 80)
+        
+        # Summary
+        self.logger.info("\n" + "=" * 80)
+        self.logger.info("FINAL MONTH NUMBERING SUMMARY")
+        self.logger.info("=" * 80)
+        for i, period in enumerate(periods):
+            leap_indicator = "LEAP" if period.is_leap else "    "
+            term_indicator = "✓" if period.has_principal_term else "✗"
+            self.logger.info(
+                f"Period {i:2d}: Month {period.month_number:2d} [{leap_indicator}] "
+                f"Term:{term_indicator} | {period.start_cst_date} to {period.end_cst_date}"
+            )
+        self.logger.info("=" * 80 + "\n")
     
     def _find_zi_month(self, periods: List[MonthPeriod], anchor_solstice_utc: datetime) -> int:
         """Find the month period that contains the Winter Solstice."""
