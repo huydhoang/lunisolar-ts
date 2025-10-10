@@ -75,7 +75,7 @@ Each traditional month has an associated Earthly Branch (地支):
 ### Step 3: Earthly Branch Calculation
 
 The system uses the traditional Gānzhī (干支) calendar:
-- **Reference Point**: February 18, 1912 (verified Jiǎzǐ 甲子 day)
+- **Reference Point**: February 18, 1912 - verified Jiǎzǐ 甲子 day (deprecated, now uses the lunisolar calendar engine `lunisolar_v2.py`)
 - **Cycle**: 12 Earthly Branches rotating continuously
 - **Branches**: 子, 丑, 寅, 卯, 辰, 巳, 午, 未, 申, 酉, 戌, 亥
 
@@ -120,8 +120,8 @@ The implementation includes a numerical scoring system for practical application
 
 - **Score 4**: Highly auspicious (除, 危, 定, 执)
 - **Score 3**: Moderately favorable (成, 开)
-- **Score 1**: Generally unfavorable (建, 满, 平, 收)
-- **Score 0**: Very unfavorable (破, 闭)
+- **Score 2**: Generally unfavorable (建, 满, 平, 收)
+- **Score 1**: Very unfavorable (破, 闭)
 
 ## Practical Applications
 
@@ -137,13 +137,13 @@ The implementation includes a numerical scoring system for practical application
 - **成 (Chéng - Accomplish)**: Completing projects, ceremonies
 - **开 (Kāi - Open)**: Opening businesses, starting new ventures
 
-#### Inauspicious Stars (Score 1)
+#### Inauspicious Stars (Score 2)
 - **建 (Jiàn - Establish)**: Avoid major construction
 - **满 (Mǎn - Full)**: Avoid overfilling or excess
 - **平 (Píng - Balanced)**: Neutral activities only
 - **收 (Shōu - Harvest)**: Collection activities, but avoid new starts
 
-#### Very Inauspicious Stars (Score 0)
+#### Very Inauspicious Stars (Score 1)
 - **破 (Pò - Break)**: Avoid all important activities
 - **闭 (Bì - Close)**: Avoid openings, starts, or new ventures
 
@@ -169,6 +169,8 @@ Most sources distinguish **节气** (the 12 “principal” terms like 立春、
 
 [1]: https://www.gltjp.com/zh-hans/article/item/21007/?utm_source=chatgpt.com "【高岛历完整指南】想知道今天究竟是个什么日子吗？来 ... - 好運日本行"
 [2]: https://www.cnpack.org/showdetail.php?id=452&lang=en&utm_source=chatgpt.com "CnCalendar 历法说明 - CnPack Open Source Projects"
+
+[3]: https://ytliu0.github.io/ChineseCalendar/solarTerms.html "24 Solar Terms (二 十 四 節 氣)"
 
 *This documentation serves as both a technical reference and cultural guide to understanding and implementing the Twelve Construction Stars system in modern applications.*
 

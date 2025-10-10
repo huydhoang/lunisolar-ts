@@ -135,19 +135,20 @@ class ConstructionStars:
     }
     
     # "建满平收黑，除危定执黄，成开皆可用，破闭不可当"
+    # Updated scoring: 4 (auspicious), 3 (moderate), 2 (inauspicious), 1 (very inauspicious)
     AUSPICIOUSNESS = {
-        "建": {"level": "inauspicious", "score": 1},
-        "满": {"level": "inauspicious", "score": 1},
-        "平": {"level": "inauspicious", "score": 1},
-        "收": {"level": "inauspicious", "score": 1},
+        "建": {"level": "inauspicious", "score": 2},
+        "满": {"level": "inauspicious", "score": 2},
+        "平": {"level": "inauspicious", "score": 2},
+        "收": {"level": "inauspicious", "score": 2},
         "除": {"level": "auspicious", "score": 4},
         "危": {"level": "auspicious", "score": 4},
         "定": {"level": "auspicious", "score": 4},
         "执": {"level": "auspicious", "score": 4},
         "成": {"level": "moderate", "score": 3},
         "开": {"level": "moderate", "score": 3},
-        "破": {"level": "very_inauspicious", "score": 0},
-        "闭": {"level": "very_inauspicious", "score": 0}
+        "破": {"level": "very_inauspicious", "score": 1},
+        "闭": {"level": "very_inauspicious", "score": 1}
     }
 
     def __init__(self, timezone_name: str):
@@ -185,17 +186,56 @@ class ConstructionStars:
         d_idx = BRANCH_INDEX[day_branch]
         return (d_idx - b_idx) % 12
 
-    def get_construction_star(self, date_obj: datetime, dto: LunisolarDateDTO) -> str:
-        """Get construction star for date (with solar term repeat rule)"""
-        # Solar term repeat rule: repeat previous day's star
-        if self._is_principal_solar_term_day(date_obj):
-            prev = date_obj - timedelta(days=1)
-            prev_dto = solar_to_lunisolar(prev.strftime("%Y-%m-%d"), "12:00", self.timezone_name, quiet=True)
-            return self.get_construction_star(prev, prev_dto)
+    def get_construction_star(self, date_obj: datetime, dto: LunisolarDateDTO,
+                              prev_star: str = None, prev_was_solar_term: bool = False) -> str:
+        """Get construction star for date (with solar term repeat rule)
         
+        Args:
+            date_obj: Target date
+            dto: Lunisolar date data for target
+            prev_star: Star from previous day (for sequential tracking)
+            prev_was_solar_term: Whether previous day was a solar term day
+        """
+        date_str = date_obj.strftime("%Y-%m-%d")
+        is_solar_term = self._is_principal_solar_term_day(date_obj)
+        
+        # Calculate base star from branch positions
         building_branch = BUILDING_BRANCH_BY_MONTH[dto.month]
-        star_index = self._star_index_from_branches(building_branch, dto.day_branch)
-        return self.CONSTRUCTION_STARS[star_index]
+        base_star_index = self._star_index_from_branches(building_branch, dto.day_branch)
+        base_star = self.CONSTRUCTION_STARS[base_star_index]
+        
+        # Determine actual star based on solar term rules
+        if is_solar_term and prev_star:
+            # Solar term day: repeat previous day's star
+            actual_star = prev_star
+            # print(f"\n  🔄 SOLAR TERM DAY: {date_str}")
+            # print(f"     Base calculation would give: {base_star} (index {base_star_index})")
+            # print(f"     But repeating previous day's star: {prev_star}")
+            # print(f"     ⚠️  This causes next day to resume at index {base_star_index}")
+        elif prev_was_solar_term and prev_star:
+            # Day after solar term: use the star that was "skipped"
+            prev_star_index = self.CONSTRUCTION_STARS.index(prev_star)
+            expected_next_index = (prev_star_index + 1) % 12
+            expected_next_star = self.CONSTRUCTION_STARS[expected_next_index]
+            actual_star = expected_next_star
+            # print(f"\n  ➡️  DAY AFTER SOLAR TERM: {date_str}")
+            # print(f"     Base calculation gives: {base_star} (index {base_star_index})")
+            # print(f"     Previous day (solar term) had: {prev_star} (index {prev_star_index})")
+            # print(f"     Continuing sequence from: ({prev_star_index} + 1) % 12 = {expected_next_index}")
+            # print(f"     Using sequential star: {expected_next_star}")
+            # if base_star != expected_next_star:
+            #     print(f"     ⚠️  CORRECTION: {base_star} → {expected_next_star}")
+        else:
+            # Normal day: use base calculation
+            actual_star = base_star
+            # print(f"\n  📅 Date: {date_str}")
+            # print(f"     Lunar month: {dto.month} ({'閏' if dto.is_leap_month else ''})")
+            # print(f"     Building branch: {building_branch} (index {BRANCH_INDEX[building_branch]})")
+            # print(f"     Day branch: {dto.day_branch} (index {BRANCH_INDEX[dto.day_branch]})")
+            # print(f"     Star calculation: ({BRANCH_INDEX[dto.day_branch]} - {BRANCH_INDEX[building_branch]}) % 12 = {base_star_index}")
+            # print(f"     Star: {actual_star}")
+        
+        return actual_star
 
 
 # =====================================================================================
@@ -225,14 +265,25 @@ class HuangdaoCalculator:
         self.construction_stars = ConstructionStars(timezone_name)
         self.great_yellow_path = GreatYellowPath()
 
-    def calculate_day_info(self, date_obj: datetime, dto: LunisolarDateDTO = None) -> Dict:
-        """Calculate complete information for a single day"""
+    def calculate_day_info(self, date_obj: datetime, dto: LunisolarDateDTO = None,
+                          prev_star: str = None, prev_was_solar_term: bool = False) -> Dict:
+        """Calculate complete information for a single day
+        
+        Args:
+            date_obj: Target date
+            dto: Lunisolar data (optional, will fetch if not provided)
+            prev_star: Star from previous day for sequential tracking
+            prev_was_solar_term: Whether previous day was a solar term
+        """
         # Get lunisolar data (use provided DTO if available, otherwise fetch)
         if dto is None:
             dto = solar_to_lunisolar(date_obj.strftime("%Y-%m-%d"), "12:00", self.timezone_name, quiet=True)
         
-        # Construction Star
-        star = self.construction_stars.get_construction_star(date_obj, dto)
+        # Check if this is a solar term day
+        is_solar_term = self.construction_stars._is_principal_solar_term_day(date_obj)
+        
+        # Construction Star with sequential tracking
+        star = self.construction_stars.get_construction_star(date_obj, dto, prev_star, prev_was_solar_term)
         ausp = self.construction_stars.AUSPICIOUSNESS[star]
         
         # Great Yellow Path
@@ -249,7 +300,7 @@ class HuangdaoCalculator:
             "lunar_month_display": f"{'閏' if dto.is_leap_month else ''}{dto.month}",
             "building_branch": BUILDING_BRANCH_BY_MONTH[dto.month],
             "is_leap_month": dto.is_leap_month,
-            "is_solar_term": self.construction_stars._is_principal_solar_term_day(date_obj),
+            "is_solar_term": is_solar_term,
             "gyp_spirit": spirit.chinese,
             "gyp_spirit_eng": spirit.english,
             "gyp_is_auspicious": spirit.is_auspicious,
@@ -287,10 +338,17 @@ class HuangdaoCalculator:
         print(f"{'Date':<6} {'Star':<4} {'Translation':<15} {'Level':<16} {'Score':<5} {'Spirit':<8} {'Path':<6} {'Day Branch':<12} {'Icons':<6}")
         print(f"{'-'*150}")
         
-        # Calculate and print each day using batched results
+        # Calculate and print each day using batched results with sequential tracking
+        prev_star = None
+        prev_was_solar_term = False
+        
         for day, dto in enumerate(lunisolar_results, start=1):
             date_obj = datetime(year, month, day)
-            info = self.calculate_day_info(date_obj, dto)
+            info = self.calculate_day_info(date_obj, dto, prev_star, prev_was_solar_term)
+            
+            # Update tracking variables for next iteration
+            prev_star = info["star"]
+            prev_was_solar_term = info["is_solar_term"]
             
             date_str = f"{day:02d}"
             star = info["star"]
@@ -310,7 +368,7 @@ class HuangdaoCalculator:
                 cs_icon = "🟨"  # Yellow - auspicious
             elif score == 3:
                 cs_icon = "🟩"  # Green - moderate
-            elif score == 1:
+            elif score == 2:
                 cs_icon = "⬛"  # Black - inauspicious
             else:
                 cs_icon = "🟥"  # Red - very inauspicious
@@ -340,8 +398,8 @@ Legend:
   Construction Stars (十二建星):
     🟨 Yellow: Auspicious (除危定执) - Score 4
     🟩 Green: Moderate (成开) - Score 3
-    ⬛ Black: Inauspicious (建满平收) - Score 1
-    🟥 Red: Very Inauspicious (破闭) - Score 0
+    ⬛ Black: Inauspicious (建满平收) - Score 2
+    🟥 Red: Very Inauspicious (破闭) - Score 1
   
   Great Yellow Path (大黄道):
     🟡 Yellow Path (黄道): Auspicious days
