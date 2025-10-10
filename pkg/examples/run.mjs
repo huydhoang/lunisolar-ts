@@ -40,11 +40,11 @@ async function show(date, timezone) {
   console.log();
 }
 
-// Asia/Ho_Chi_Minh example (UTC+7)
-await show(new Date(Date.UTC(2025, 9, 8, 4, 0, 0)), 'Asia/Ho_Chi_Minh');
+// Test case 1: 2025-10-08 12:00 Asia/Ho_Chi_Minh (UTC+7) - Should be lunar month 8
+await show(new Date(Date.UTC(2025, 9, 8, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
 
-// Asia/Shanghai example (UTC+8)
-await show(new Date(Date.UTC(2025, 5, 21, 4, 0, 0)), 'Asia/Shanghai');
+// Test case 2: 2025-08-23 12:00 Asia/Ho_Chi_Minh (UTC+7) - Should be lunar month 7
+await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
 
-// America/New_York example (UTC-4 or -5)
-await show(new Date(Date.UTC(2025, 5, 21, 16, 0, 0)), 'America/New_York');
+// Additional test: Asia/Shanghai example (UTC+8)
+await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Shanghai');

@@ -178,7 +178,9 @@ export class LunisolarCalendar {
       .flatMap(([_, arr]) => arr)
       .filter(([, idx]) => (idx % 2) === 0)
       .map(([ts, idx]) => {
-        const termIndexRaw = Math.floor(idx / 2) + 1;
+        // Principal terms: idx 0=Z2, 2=Z3, ..., 18=Z11, 20=Z12, 22=Z1
+        // Formula: (idx / 2) + 2, with wrapping at 12
+        const termIndexRaw = (idx / 2) + 2;
         const termIndex = termIndexRaw > 12 ? termIndexRaw - 12 : termIndexRaw;
         const dt = new Date(ts * 1000);
         const d = cst.utcToTimezoneDate(dt);
@@ -245,38 +247,57 @@ export class LunisolarCalendar {
       ? currentYearZ11.instantUtc
       : (z11.find((t) => t.instantUtc.getUTCFullYear() === targetYear - 1)?.instantUtc || currentYearZ11.instantUtc);
 
-    // Assign month numbers and leap using no-zhongqi rule, with Zi-month containing the solstice set to 11
+    // Assign month numbers starting from Zi month (month 11)
+    // Strategy: Find Zi month (contains Winter Solstice) and iterate forward only
     const ziIndex = periods.findIndex((p) => p.startUtc <= anchorSolstice && anchorSolstice < p.endUtc);
     if (ziIndex === -1) throw new Error('Failed to locate Zi-month containing Winter Solstice');
 
+    // console.log('DEBUG: Zi month found at index:', ziIndex);
+    // console.log('DEBUG: Zi month period:', periods[ziIndex].startCst, 'to', periods[ziIndex].endCst);
+    // console.log('DEBUG: Anchor solstice:', anchorSolstice.toISOString());
+    
     periods[ziIndex].monthNumber = 11;
     periods[ziIndex].isLeap = false;
 
-    // Forward from Zi
+    // Forward pass: iterate from Zi month through all subsequent periods
     let current = 11;
     for (let i = ziIndex + 1; i < periods.length; i++) {
       if (periods[i].hasPrincipal) {
+        // Regular month with principal term: increment month number
         current = (current % 12) + 1;
         periods[i].monthNumber = current;
         periods[i].isLeap = false;
       } else {
+        // Leap month (no principal term): takes the preceding month's number
         periods[i].monthNumber = current;
         periods[i].isLeap = true;
       }
     }
-    // Backward before Zi
-    current = 11;
-    for (let i = ziIndex - 1; i >= 0; i--) {
-      current = current > 1 ? current - 1 : 12;
-      if (periods[i].hasPrincipal) {
-        periods[i].monthNumber = current;
-        periods[i].isLeap = false;
-      } else {
-        const nextNum = (current % 12) + 1;
-        periods[i].monthNumber = nextNum;
-        periods[i].isLeap = true;
+
+    // Handle any periods before Zi month (should be rare/none with proper windowing)
+    if (ziIndex > 0) {
+      // These periods come before the Winter Solstice anchor, so we need to number them backward
+      current = 11;
+      for (let i = ziIndex - 1; i >= 0; i--) {
+        // Decrement to get the preceding month number
+        current = current > 1 ? current - 1 : 12;
+        if (periods[i].hasPrincipal) {
+          periods[i].monthNumber = current;
+          periods[i].isLeap = false;
+        } else {
+          // Leap month before Zi month: should take the preceding month's number
+          // The preceding month is 'current', so the leap month should also be 'current'
+          periods[i].monthNumber = current;
+          periods[i].isLeap = true;
+        }
       }
     }
+
+    // Debug logging (disabled)
+    // console.log('DEBUG: Month periods summary:');
+    // for (const p of periods) {
+    //   console.log(`  Period ${p.index}: Month ${p.monthNumber}${p.isLeap ? ' LEAP' : ''} | ${p.startCst.y}-${p.startCst.m}-${p.startCst.d} to ${p.endCst.y}-${p.endCst.m}-${p.endCst.d} | Principal: ${p.hasPrincipal}`);
+    // }
 
     // Find the period that contains target date by CST date-only comparison
     const targetCst = cst.utcToTimezoneDate(targetUtc);
