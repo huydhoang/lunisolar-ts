@@ -33,9 +33,27 @@ export type TLunisolarDate = {
   hourBranch: string;
 };
 
+// Twelve Construction Stars in fixed order
+export const STAR_SEQUENCE = [
+  '建',
+  '除',
+  '满',
+  '平',
+  '定',
+  '执',
+  '破',
+  '危',
+  '成',
+  '收',
+  '开',
+  '闭',
+] as const;
+
+export type TConstructionStarName = (typeof STAR_SEQUENCE)[number];
+
 /** 12 Construction Stars info */
 export type TConstructionStar = {
-  name: string;
+  name: TConstructionStarName;
   auspicious: boolean;
   score: number; // e.g., 0-100 normalized score
   description?: string;
