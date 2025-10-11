@@ -59,18 +59,18 @@ The calculation begins with the 24 Solar Terms (二十四节气), particularly:
 ### Step 2: Monthly Building System (月建)
 
 Each traditional month has an associated Earthly Branch (地支):
-- 正月建寅 (Lunisolar month 1: 建 Jiàn on Yín 寅 day)
-- 二月建卯 (Lunisolar month 2: 建 Jiàn on Mǎo 卯 day)
-- 三月建辰 (Lunisolar month 3: 建 Jiàn on Chén 辰 day)
-- 四月建巳 (Lunisolar month 4: 建 Jiàn on Sì 巳 day)
-- 五月建午 (Lunisolar month 5: 建 Jiàn on Wǔ 午 day)
-- 六月建未 (Lunisolar month 6: 建 Jiàn on Wèi 未 day)
-- 七月建申 (Lunisolar month 7: 建 Jiàn on Shēn 申 day)
-- 八月建酉 (Lunisolar month 8: 建 Jiàn on Yǒu 酉 day)
-- 九月建戌 (Lunisolar month 9: 建 Jiàn on Xū 戌 day)
-- 十月建亥 (Lunisolar month 10: 建 Jiàn on Hài 亥 day)
-- 十一月建子 (Lunisolar month 11: 建 Jiàn on Zǐ 子 day)
-- 十二月建丑 (Lunisolar month 12: 建 Jiàn on Chǒu 丑 day)
+- 正月建寅 (Lunisolar month 1: 建 Jiàn on the first Yín 寅 day)
+- 二月建卯 (Lunisolar month 2: 建 Jiàn on the first Mǎo 卯 day)
+- 三月建辰 (Lunisolar month 3: 建 Jiàn on the first Chén 辰 day)
+- 四月建巳 (Lunisolar month 4: 建 Jiàn on the first Sì 巳 day)
+- 五月建午 (Lunisolar month 5: 建 Jiàn on the first Wǔ 午 day)
+- 六月建未 (Lunisolar month 6: 建 Jiàn on the first Wèi 未 day)
+- 七月建申 (Lunisolar month 7: 建 Jiàn on the first Shēn 申 day)
+- 八月建酉 (Lunisolar month 8: 建 Jiàn on the first Yǒu 酉 day)
+- 九月建戌 (Lunisolar month 9: 建 Jiàn on the first Xū 戌 day)
+- 十月建亥 (Lunisolar month 10: 建 Jiàn on the first Hài 亥 day)
+- 十一月建子 (Lunisolar month 11: 建 Jiàn on the first Zǐ 子 day)
+- 十二月建丑 (Lunisolar month 12: 建 Jiàn on the first Chǒu 丑 day)
 
 ### Step 3: Earthly Branch Calculation
 

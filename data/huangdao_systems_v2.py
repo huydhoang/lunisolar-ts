@@ -208,32 +208,32 @@ class ConstructionStars:
         if is_solar_term and prev_star:
             # Solar term day: repeat previous day's star
             actual_star = prev_star
-            # print(f"\n  🔄 SOLAR TERM DAY: {date_str}")
-            # print(f"     Base calculation would give: {base_star} (index {base_star_index})")
-            # print(f"     But repeating previous day's star: {prev_star}")
-            # print(f"     ⚠️  This causes next day to resume at index {base_star_index}")
+            print(f"\n  🔄 SOLAR TERM DAY: {date_str}")
+            print(f"     Base calculation would give: {base_star} (index {base_star_index})")
+            print(f"     But repeating previous day's star: {prev_star}")
+            print(f"     ⚠️  This causes next day to resume at index {base_star_index}")
         elif prev_was_solar_term and prev_star:
             # Day after solar term: use the star that was "skipped"
             prev_star_index = self.CONSTRUCTION_STARS.index(prev_star)
             expected_next_index = (prev_star_index + 1) % 12
             expected_next_star = self.CONSTRUCTION_STARS[expected_next_index]
             actual_star = expected_next_star
-            # print(f"\n  ➡️  DAY AFTER SOLAR TERM: {date_str}")
-            # print(f"     Base calculation gives: {base_star} (index {base_star_index})")
-            # print(f"     Previous day (solar term) had: {prev_star} (index {prev_star_index})")
-            # print(f"     Continuing sequence from: ({prev_star_index} + 1) % 12 = {expected_next_index}")
-            # print(f"     Using sequential star: {expected_next_star}")
-            # if base_star != expected_next_star:
-            #     print(f"     ⚠️  CORRECTION: {base_star} → {expected_next_star}")
+            print(f"\n  ➡️  DAY AFTER SOLAR TERM: {date_str}")
+            print(f"     Base calculation gives: {base_star} (index {base_star_index})")
+            print(f"     Previous day (solar term) had: {prev_star} (index {prev_star_index})")
+            print(f"     Continuing sequence from: ({prev_star_index} + 1) % 12 = {expected_next_index}")
+            print(f"     Using sequential star: {expected_next_star}")
+            if base_star != expected_next_star:
+                print(f"     ⚠️  CORRECTION: {base_star} → {expected_next_star}")
         else:
             # Normal day: use base calculation
             actual_star = base_star
-            # print(f"\n  📅 Date: {date_str}")
-            # print(f"     Lunar month: {dto.month} ({'閏' if dto.is_leap_month else ''})")
-            # print(f"     Building branch: {building_branch} (index {BRANCH_INDEX[building_branch]})")
-            # print(f"     Day branch: {dto.day_branch} (index {BRANCH_INDEX[dto.day_branch]})")
-            # print(f"     Star calculation: ({BRANCH_INDEX[dto.day_branch]} - {BRANCH_INDEX[building_branch]}) % 12 = {base_star_index}")
-            # print(f"     Star: {actual_star}")
+            print(f"\n  📅 Date: {date_str}")
+            print(f"     Lunar month: {dto.month} ({'閏' if dto.is_leap_month else ''})")
+            print(f"     Building branch: {building_branch} (index {BRANCH_INDEX[building_branch]})")
+            print(f"     Day branch: {dto.day_branch} (index {BRANCH_INDEX[dto.day_branch]})")
+            print(f"     Star calculation: ({BRANCH_INDEX[dto.day_branch]} - {BRANCH_INDEX[building_branch]}) % 12 = {base_star_index}")
+            print(f"     Star: {actual_star}")
         
         return actual_star
 

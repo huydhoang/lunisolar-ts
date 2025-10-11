@@ -52,4 +52,6 @@ await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
 await show(new Date(Date.UTC(2025, 7, 23, 5, 0, 0)), 'Asia/Shanghai');
 
 // Additional test: Construction Star sequence bug
-await show(new Date(Date.UTC(2025, 9, 9, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
+for (let i = 0; i < 12; i++) {
+  await show(new Date(Date.UTC(2025, 9, 8 + i, 5, 0, 0)), 'Asia/Ho_Chi_Minh');
+}
