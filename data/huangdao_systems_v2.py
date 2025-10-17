@@ -138,16 +138,16 @@ class ConstructionStars:
     # Updated scoring: 4 (auspicious), 3 (moderate), 2 (inauspicious), 1 (very inauspicious)
     AUSPICIOUSNESS = {
         "建": {"level": "inauspicious", "score": 2},
-        "满": {"level": "inauspicious", "score": 2},
-        "平": {"level": "inauspicious", "score": 2},
-        "收": {"level": "inauspicious", "score": 2},
         "除": {"level": "auspicious", "score": 4},
-        "危": {"level": "auspicious", "score": 4},
+        "满": {"level": "moderate", "score": 3},
+        "平": {"level": "inauspicious", "score": 2},
         "定": {"level": "auspicious", "score": 4},
-        "执": {"level": "auspicious", "score": 4},
-        "成": {"level": "moderate", "score": 3},
-        "开": {"level": "moderate", "score": 3},
+        "执": {"level": "moderate", "score": 3},
         "破": {"level": "very_inauspicious", "score": 1},
+        "危": {"level": "inauspicious", "score": 2},
+        "成": {"level": "moderate", "score": 3},
+        "收": {"level": "inauspicious", "score": 2},
+        "开": {"level": "moderate", "score": 3},
         "闭": {"level": "very_inauspicious", "score": 1}
     }
 
