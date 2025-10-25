@@ -39,10 +39,10 @@ const MONTH_BUILDING_BRANCH: Record<number, string> = {
 // 建满平收黑，除危定执黄，成开皆可用，破闭不可当
 // Updated scoring: 4 (auspicious), 3 (moderate), 2 (inauspicious), 1 (very inauspicious)
 const STAR_SCORES: Record<string, { auspicious: boolean; score: number; description: string }> = {
-  建: { auspicious: true, score: 3, description: 'Establish; take small steps, evaluate risks' },
+  建: { auspicious: false, score: 2, description: 'Establish; take small steps, evaluate risks' },
   除: { auspicious: true, score: 4, description: 'Remove; get rid of redundancies and continue' },
   满: { auspicious: true, score: 3, description: 'Full; new highs achieved, avoid new starts' },
-  平: { auspicious: true, score: 3, description: 'Balanced; yin and yang are equal, rest' },
+  平: { auspicious: false, score: 2, description: 'Balanced; yin and yang are equal, rest' },
   定: { auspicious: true, score: 4, description: 'Set; stable foundation, highly auspicious' },
   执: { auspicious: true, score: 3, description: 'Hold; good for maintenance works' },
   破: { auspicious: false, score: 1, description: 'Break; stop all works, watch out for issues' },
